@@ -14,5 +14,5 @@ ENV GITHUB_USER samuelcolvin
 ENV GITHUB_REPO gaugemore.com
 ENV SRC_DIR /src
 
-EXPOSE 80
+EXPOSE 8000
 ENTRYPOINT ["python", "main.py"]

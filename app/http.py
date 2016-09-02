@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import ssl
 
 from aiohttp import web
 from pathlib import Path
@@ -64,9 +65,13 @@ def create_app(loop=None):
 def run_web_app(app):
     logger.debug('starting web server')
 
+    # ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    # ssl_context.load_cert_chain('/path/to/server.crt', '/path/to/server.key')
+    ssl_context = None
+
     handler = app.make_handler(access_log_format='%r %s %b')
     loop = app.loop
-    srv = loop.run_until_complete(loop.create_server(handler, '0.0.0.0', 80, backlog=128))
+    srv = loop.run_until_complete(loop.create_server(handler, '0.0.0.0', 8000, ssl=ssl_context, backlog=128))
 
     try:
         loop.run_forever()

@@ -39,9 +39,6 @@ def setup(user, repo, oauth_token):
     p = git_run('clone', '--depth=50', url, str(SRC_DIR))
     logger.debug('clone output: %s', p.stdout)
     os.chdir(str(SRC_DIR))
-    ready = SRC_DIR / '.ready'
-    logger.debug('touching %s', ready)
-    ready.touch()
 
 
 def fs_path(path: str) -> Path:
