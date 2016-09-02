@@ -1,29 +1,36 @@
 import logging
-import click
+import os
 
 from app.files import setup
-from app.http import run, get_app
+from app.http import run_web_app, create_app
 
-logger = logging.getLogger('hacklebox')
-logger.setLevel(logging.DEBUG)
 hdl = logging.StreamHandler()
 hdl.setLevel(logging.DEBUG)
-logger.addHandler(hdl)
+
+hackle_logger = logging.getLogger('hacklebox')
+hackle_logger.setLevel(logging.DEBUG)
+hackle_logger.addHandler(hdl)
+
+web_access_logger = logging.getLogger('aiohttp.access')
+web_access_logger.setLevel(logging.DEBUG)
+web_access_logger.addHandler(hdl)
 
 
-@click.command()
-@click.argument('user')
-@click.argument('repo')
-@click.argument('oauth_token', required=False)
-def main(user, repo, oauth_token):
-    setup(user, repo, oauth_token)
-    run()
+def main(loop=None):
+    github_user = os.getenv('GITHUB_USER')
+    assert github_user, 'GITHUB_USER env variable not set'
 
+    github_repo = os.getenv('GITHUB_REPO')
+    assert github_repo, 'GITHUB_REPO env variable not set'
 
-def run_direct(loop):
-    setup('samuelcolvin', 'gaugemore.com', None)
-    return get_app(loop)
+    github_oauth = os.getenv('GITHUB_OAUTH')
+    assert github_oauth, 'GITHUB_OAUTH env variable not set'
+
+    setup(github_user, github_repo, github_oauth)
+
+    return create_app(loop)
 
 
 if __name__ == '__main__':
-    main()
+    app = main()
+    run_web_app(app)

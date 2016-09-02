@@ -6,33 +6,46 @@ import subprocess
 from pathlib import Path
 from typing import Callable, Dict, Set
 
-CODE_DIR = Path('/tmp/hackle-code')
+SRC_DIR = Path(os.getenv('SRC_DIR', '/tmp/hackle-src'))
 
 logger = logging.getLogger('hacklebox')
 
 
 def git_run(*args):
     args = ('git',) + args
-    return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    p = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    if p.returncode != 0:
+        raise RuntimeError('command "{}" return code {}, output: \n{}'.format(' '.join(args), p.returncode, p.stdout))
+    return p
 
 
 def setup(user, repo, oauth_token):
-    if CODE_DIR.exists():
-        assert CODE_DIR.is_dir()
-        logger.debug('code dir already exists, deleting')
-        shutil.rmtree(str(CODE_DIR))
-    logger.debug('creating code dir "%s"', CODE_DIR)
-    CODE_DIR.mkdir(parents=True)
+    if SRC_DIR.exists():
+        assert SRC_DIR.is_dir()
+        files = list(SRC_DIR.iterdir())
+        if files:
+            logger.debug('code dir already exists, emptying')
+            for p in SRC_DIR.iterdir():
+                if p.is_dir():
+                    shutil.rmtree(str(p))
+                else:
+                    p.unlink()
+    else:
+        SRC_DIR.mkdir(parents=True)
+        logger.debug('creating code dir "%s"', SRC_DIR)
 
     url = 'https://{}@github.com/{}/{}.git'.format(oauth_token or '', user, repo)
-    logger.info('cloning %s > %s', url, CODE_DIR)
-    p = git_run('clone', url, str(CODE_DIR))
+    logger.info('cloning %s > %s', url, SRC_DIR)
+    p = git_run('clone', '--depth=50', url, str(SRC_DIR))
     logger.debug('clone output: %s', p.stdout)
-    os.chdir(str(CODE_DIR))
+    os.chdir(str(SRC_DIR))
+    ready = SRC_DIR / '.ready'
+    logger.debug('touching %s', ready)
+    ready.touch()
 
 
 def fs_path(path: str) -> Path:
-    return CODE_DIR / path.strip('./').replace('..', '.')
+    return SRC_DIR / path.strip('./').replace('..', '.')
 
 
 def read_file(path: str) -> bytes:
@@ -77,7 +90,7 @@ def file_tree(get_url: Callable[[str], str]):
                     continue
                 tree[_p.name] = _file_tree(_p)
             else:
-                relative_path = str(_p.relative_to(CODE_DIR))
+                relative_path = str(_p.relative_to(SRC_DIR))
                 if relative_path in ignored:
                     continue
                 stat = _p.stat()
@@ -91,7 +104,7 @@ def file_tree(get_url: Callable[[str], str]):
                 }
         return tree
 
-    tree = _file_tree(CODE_DIR)
+    tree = _file_tree(SRC_DIR)
     # have to add deleted files:
     for path, status in changes.items():
         if status == STATUS_DELETED:
