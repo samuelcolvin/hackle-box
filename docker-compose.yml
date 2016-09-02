@@ -1,0 +1,19 @@
+version: '2'
+volumes:
+  src:
+    external: false
+services:
+  ctrl:
+    env_file: environ
+    build: .
+    volumes:
+      - src:/src
+  jekyll:
+    image: jekyll/jekyll
+#    entrypoint: /bin/sh -c 'while [ ! -f /srv/jekyll/.ready ]; do sleep 1; done && chown -R jekyll:jekyll /srv/jekyll && ls -lah /srv/jekyll/site && jekyll serve --incremental'
+    ports:
+      - "8000:4000"
+    volumes:
+      - src:/srv/jekyll
+    depends_on:
+      - ctrl

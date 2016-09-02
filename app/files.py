@@ -11,8 +11,7 @@ SRC_DIR = Path(os.getenv('SRC_DIR', '/tmp/hackle-src'))
 logger = logging.getLogger('hacklebox')
 
 
-def git_run(*args):
-    args = ('git',) + args
+def run(*args):
     p = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     if p.returncode != 0:
         raise RuntimeError('command "{}" return code {}, output: \n{}'.format(' '.join(args), p.returncode, p.stdout))
@@ -36,9 +35,11 @@ def setup(user, repo, oauth_token):
 
     url = 'https://{}@github.com/{}/{}.git'.format(oauth_token or '', user, repo)
     logger.info('cloning %s > %s', url, SRC_DIR)
-    p = git_run('clone', '--depth=50', url, str(SRC_DIR))
+    p = run('git', 'clone', '--depth=50', url, str(SRC_DIR))
     logger.debug('clone output: %s', p.stdout)
     os.chdir(str(SRC_DIR))
+    gemfile = SRC_DIR / 'Gemfile'
+    gemfile.exists() and gemfile.unlink()
 
 
 def fs_path(path: str) -> Path:
@@ -65,13 +66,13 @@ STATUS_LOOKUP = {
 
 
 def get_changes() -> Dict[str, str]:
-    changes = git_run('status', '--porcelain', '-uall').stdout
+    changes = run('git', 'status', '--porcelain', '-uall').stdout
     changes = [l.strip().split() for l in changes.split('\n') if l]
     return {p: STATUS_LOOKUP[s] for s, p in changes}
 
 
 def get_ignored() -> Set[str]:
-    ignored = git_run('ls-files', '-o', '-i', '--exclude-standard').stdout.split('\n')
+    ignored = run('git', 'ls-files', '-o', '-i', '--exclude-standard').stdout.split('\n')
     return {i for i in ignored if i}
 
 
